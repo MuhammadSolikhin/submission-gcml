@@ -12,6 +12,10 @@ const InputError = require('../exceptions/InputError');
             cors: {
                 origin: ['*'],
             },
+            payload: {
+                maxBytes: 1000000, 
+                allow: 'multipart/form-data'
+            }
         },
     });
 
@@ -26,19 +30,22 @@ const InputError = require('../exceptions/InputError');
         if (response instanceof InputError) {
             const newResponse = h.response({
                 status: 'fail',
-                message: `${response.message} Silakan gunakan foto lain.`
-            })
-            newResponse.code(response.statusCode)
+                message: `${response.message}`
+            });
+            newResponse.code(response.statusCode);
             return newResponse;
         }
 
+
         if (response.isBoom) {
-            const newResponse = h.response({
-                status: 'fail',
-                message: response.message
-            })
-            newResponse.code(response.output.statusCode)
-            return newResponse;
+            if (response.output.statusCode === 413) {
+                const newResponse = h.response({
+                    status: 'fail',
+                    message: 'Payload content length greater than maximum allowed: 1000000'
+                });
+                newResponse.code(response.output.statusCode)
+                return newResponse;
+            }
         }
 
         return h.continue;

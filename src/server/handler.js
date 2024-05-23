@@ -1,5 +1,7 @@
 const predictClassification = require('../services/inferenceService');
 const storeData = require('../services/storeData');
+const { Firestore } = require('@google-cloud/firestore');
+const firestore = new Firestore();
 const crypto = require('crypto');
 
 async function postPredictHandler(request, h) {
@@ -13,9 +15,7 @@ async function postPredictHandler(request, h) {
     const data = {
         "id": id,
         "result": label,
-        "explanation": explanation,
         "suggestion": suggestion,
-        "confidenceScore": confidenceScore,
         "createdAt": createdAt
     }
 
@@ -23,11 +23,38 @@ async function postPredictHandler(request, h) {
 
     const response = h.response({
         status: 'success',
-        message: confidenceScore > 99 ? 'Model is predicted successfully.' : 'Model is predicted successfully but under threshold. Please use the correct picture',
+        message: confidenceScore > 99 ? 'Model is predicted successfully.' : 'Model is predicted successfully',
         data
     })
     response.code(201);
     return response;
 }
 
-module.exports = postPredictHandler;
+async function getPredictionHistoriesHandler(request, h) {
+    try {
+        const snapshot = await firestore.collection('predictions').get();
+        const histories = snapshot.docs.map(doc => ({
+            id: doc.id,
+            history: doc.data()
+        }));
+
+        return h.response({
+            status: 'success',
+            data: histories
+        }).code(200);
+    } catch (error) {
+        console.error('Error fetching prediction histories:', error);
+
+        const response = h.response({
+            status: 'fail',
+            message: 'Gagal mengambil riwayat prediksi'
+        });
+        response.code(500);
+        return response;
+    }
+}
+
+module.exports = {
+    postPredictHandler,
+    getPredictionHistoriesHandler
+};
